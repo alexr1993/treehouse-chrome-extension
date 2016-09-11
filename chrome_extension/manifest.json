@@ -1,0 +1,32 @@
+{
+  "manifest_version": 2,
+
+  "name": "Treehouse Subreddit Finder",
+  "description": "See all of the previous submissions of a URL posted to Reddit and find new communities in the process",
+  "version": "10",
+
+  "browser_action": {
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "activeTab",
+    "https://ajax.googleapis.com/"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.reddit.com/",
+        "https://www.reddit.com/?*",
+        "https://www.reddit.com/r/*",
+        "https://www.reddit.com/user/*",
+        "https://www.reddit.com/me/*",
+        "https://www.youtube.com/*"
+        ],
+      "css": [],
+      "js": ["all.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    "all.js.map"
+  ]
+}
