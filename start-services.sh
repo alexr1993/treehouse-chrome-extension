@@ -12,7 +12,7 @@
 # 3. Ensure virtualenv is at env
 #
 repo_dir=~/git/treehouse-chrome-extension
-source $repo_dir/env/bin/activate
+source $repo_dir/reddit-api-worker/env/bin/activate
 
 pip install -r requirements.txt
 
@@ -28,4 +28,5 @@ deactivate
 
 echo "Starting spring service"
 
-nohup java -jar $repo_dir/subreddit-finder-services/build/libs/gs-spring-boot-0.1.0.jar &
+cd $repo_dir/subreddit-finder-services
+nohup ./gradlew bootrun &
