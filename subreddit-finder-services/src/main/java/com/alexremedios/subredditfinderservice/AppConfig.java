@@ -6,6 +6,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
 import com.rabbitmq.client.ConnectionFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import redis.clients.jedis.JedisPool;
@@ -18,24 +19,26 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
+@Slf4j
 public class AppConfig {
 
     private static final JedisPoolConfig config;
     private static final MetricRegistry metrics = new MetricRegistry();
-    private final Properties properties;
-
+    private static final String GRAPHITE_IP_PROPERTY_NAME = "graphite-ip";
 
     static {
         config = new JedisPoolConfig();
         config.setMaxTotal(128);
     }
 
-    private Properties privateConfig;
-
     public AppConfig() throws IOException {
-        properties = getPrivateConfig();
-        startGraphiteReporter(properties.getProperty("graphite-ip"));
-
+        final Properties properties = getPrivateConfig();
+        final String graphiteIp = properties.getProperty(GRAPHITE_IP_PROPERTY_NAME);
+        if (graphiteIp == null) {
+            startConsoleReporter();
+        } else {
+            startGraphiteReporter(graphiteIp);
+        }
     }
 
     private void startGraphiteReporter(final String graphiteIp) {
