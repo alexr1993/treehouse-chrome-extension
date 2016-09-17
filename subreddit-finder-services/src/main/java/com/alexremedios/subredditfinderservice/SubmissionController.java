@@ -1,5 +1,7 @@
 package com.alexremedios.subredditfinderservice;
 
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,6 +36,12 @@ public class SubmissionController {
     private final static String QUEUE_NAME = "request queue";
     private final Channel channel;
     private final JedisPool pool;
+    // http://metrics.dropwizard.io/3.1.0/getting-started/
+    private final Meter requestsMetric;
+    private final Meter cacheHitsMetric;
+    private final Meter exceptionsMetric;
+
+
     // Don't make this objectMapper a bean. The default bean serializes to camelCase which the extension relies on
     private static final ObjectMapper objectMapper = new ObjectMapper().setPropertyNamingStrategy(
                 PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES)
@@ -43,11 +51,15 @@ public class SubmissionController {
 
     @Autowired
     public SubmissionController(final ConnectionFactory connectionFactory,
-                                final JedisPool jedisPool) throws IOException {
+                                final JedisPool jedisPool,
+                                final MetricRegistry metrics) throws IOException {
         Connection connection = connectionFactory.newConnection();
         channel = connection.createChannel();
         channel.queueDeclare(QUEUE_NAME, false, false, false, null);
         this.pool = jedisPool;
+        requestsMetric = metrics.meter("requestsMetric");
+        cacheHitsMetric = metrics.meter("cacheHitsMetric");
+        exceptionsMetric = metrics.meter("exceptionsMetric");
     }
 
     @CrossOrigin(origins = "*")
@@ -55,6 +67,7 @@ public class SubmissionController {
     public RetrieveSubmissionDataResponse search(final @RequestBody SearchRequest req,
                                                  final HttpServletRequest request) throws IOException {
         final ImmutableMap.Builder<String, List<SubmissionData>> mapBuilder = new ImmutableMap.Builder<>();
+        requestsMetric.mark();
 
         try (Jedis jedis = pool.getResource()) {
             jedis.incr("subredditfinderservices.submissioncontroller.search.ping." + request.getRemoteAddr());
@@ -78,9 +91,12 @@ public class SubmissionController {
                                 }
 
                                 jedis.incr("subredditfinderservices.submissioncontroller.search.cachehit." + request.getRemoteAddr());
+
                                 log.info("Cache hit: " + url);
+                                cacheHitsMetric.mark();
                                 mapBuilder.put(url, cacheData.getSubmissionDataList());
                             } catch (final Exception exception) {
+                                exceptionsMetric.mark();
                                 log.error("Failed to process URL " + url, exception);
                             }
                        });
@@ -94,6 +110,7 @@ public class SubmissionController {
             return new RetrieveSubmissionDataResponse(map);
 
         } catch (final Exception exception) {
+            exceptionsMetric.mark();
             log.error("Failed to obtain Jedis pool resource", exception);
             throw exception;
         }
