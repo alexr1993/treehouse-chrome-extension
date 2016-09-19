@@ -2,6 +2,8 @@
 /logs
 /nohup.out
 
+.vscode
+
 # Gradle
 # ------
 .gradle
