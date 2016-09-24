@@ -1,6 +1,6 @@
 console.log("Subreddit finder running");
 
-(function() {
+let init = function() {
   var toggle = function() {
     showingAll = !showingAll;
     pageToggle.textContent = showingAll ? "Hide Post Lists" : "Show Post Lists";
@@ -22,4 +22,6 @@ console.log("Subreddit finder running");
     return;
   }
   pageTabs.appendChild(li);
-}());
+
+  runRequest();
+};

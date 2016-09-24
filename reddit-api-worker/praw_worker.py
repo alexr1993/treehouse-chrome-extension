@@ -6,6 +6,12 @@ import json
 import datetime
 import time
 
+def getCommentCount(submission):
+    if submission._comments is None:
+        return 0
+    return len(submission._comments)
+
+
 def getSubmissionData(iterator):
     output = []
     while True:
@@ -20,7 +26,8 @@ def getSubmissionData(iterator):
                 "url": match.url,
                 "author": str(match.author),
                 "created_utc": match.created_utc,
-                "title": match.title
+                "title": match.title,
+                "comment_count": getCommentCount(match)
             }
             output.append(submissionData)
             print("    " + str(submissionData))

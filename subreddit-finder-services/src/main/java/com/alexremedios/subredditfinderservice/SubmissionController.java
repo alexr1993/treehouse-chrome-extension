@@ -10,8 +10,6 @@ import com.google.common.collect.ImmutableMap;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -36,17 +34,20 @@ public class SubmissionController {
     private final static String QUEUE_NAME = "request queue";
     private final Channel channel;
     private final JedisPool pool;
-    // http://metrics.dropwizard.io/3.1.0/getting-started/
     private final Meter requestsMetric;
     private final Meter cacheHitsMetric;
     private final Meter exceptionsMetric;
 
+    private static final String REQUESTS_METRIC = "requestsMetric";
+    private static final String CACHE_HITS_METRIC = "cacheHitsMetric";
+    private static final String EXCEPTIONS_METRIC = "exceptionsMetric";
 
     // Don't make this objectMapper a bean. The default bean serializes to camelCase which the extension relies on
     private static final ObjectMapper objectMapper = new ObjectMapper().setPropertyNamingStrategy(
                 PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES)
             .setSerializationInclusion(JsonInclude.Include.NON_NULL);
     private static final JavaType type = objectMapper.getTypeFactory().constructType(SubmissionCacheData.class);
+    private final MetricRegistry metrics;
 
 
     @Autowired
@@ -57,9 +58,10 @@ public class SubmissionController {
         channel = connection.createChannel();
         channel.queueDeclare(QUEUE_NAME, false, false, false, null);
         this.pool = jedisPool;
-        requestsMetric = metrics.meter("requestsMetric");
-        cacheHitsMetric = metrics.meter("cacheHitsMetric");
-        exceptionsMetric = metrics.meter("exceptionsMetric");
+        this.metrics = metrics;
+        requestsMetric = metrics.meter(REQUESTS_METRIC);
+        cacheHitsMetric = metrics.meter(CACHE_HITS_METRIC);
+        exceptionsMetric = metrics.meter(EXCEPTIONS_METRIC);
     }
 
     @CrossOrigin(origins = "*")
@@ -93,7 +95,7 @@ public class SubmissionController {
                                 jedis.incr("subredditfinderservices.submissioncontroller.search.cachehit." + request.getRemoteAddr());
 
                                 log.info("Cache hit: " + url);
-                                cacheHitsMetric.mark();
+                                metricMarkCacheHit(req.getRequestMetadata());
                                 mapBuilder.put(url, cacheData.getSubmissionDataList());
                             } catch (final Exception exception) {
                                 exceptionsMetric.mark();
@@ -114,6 +116,15 @@ public class SubmissionController {
             log.error("Failed to obtain Jedis pool resource", exception);
             throw exception;
         }
+    }
+
+    private void metricMarkCacheHit(final RequestMetadata requestMetadata) {
+        if (requestMetadata == null) {
+            return;
+        }
+        cacheHitsMetric.mark();
+        final Meter guidCacheHitsMetric = metrics.meter(String.format("%s.%s", CACHE_HITS_METRIC, requestMetadata.getGuid()));
+        guidCacheHitsMetric.mark();
     }
 
     private void enqueue(final String url, final Jedis jedis) throws IOException {
@@ -137,11 +148,5 @@ public class SubmissionController {
 
     private boolean isPending(final SubmissionCacheData cacheData) {
         return cacheData.getSubmissionDataList() == null;
-    }
-
-    @Data
-    @AllArgsConstructor
-    public static class RetrieveSubmissionDataResponse {
-        private Map<String, List<SubmissionData>> submissions;
     }
 }

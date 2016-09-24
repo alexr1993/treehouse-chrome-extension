@@ -17,4 +17,5 @@ public class SubmissionData {
     String author;
     String createdUtc;
     String title;
+    long commentCount;
 }

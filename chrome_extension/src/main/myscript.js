@@ -26,7 +26,11 @@ let fetchSubreddits = function() {
     type: "POST",
     url: SERVICE,
     contentType: "application/json",
-    data: JSON.stringify({urls: unfetchedUrls}),
+    data: JSON.stringify(
+      {
+        urls: unfetchedUrls,
+        requestMetadata: {guid: GUID}
+      }),
     dataType: "json",
     success: function( submissionData ) {
       unfetchedPosts.forEach(function(p) {
@@ -60,7 +64,7 @@ let fetchPageUrl = function() {
     type: "POST",
     url: service,
     contentType: "application/json",
-    data: JSON.stringify({urls: [url]}),
+    data: JSON.stringify({urls: [url], guid: GUID}),
     dataType: "json",
     success: function( submissionData ) {
       let subData = submissionData.submissions[url];
@@ -88,8 +92,6 @@ let runRequest = function() {
   }
   setTimeout(runRequest, 1000);
 };
-
-runRequest();
 
 // Never stop checking because youtube doesn't load new pages when you follow a link to another video
 let runPageUrlRequest = function() {
