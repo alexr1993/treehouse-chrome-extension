@@ -119,10 +119,10 @@ public class SubmissionController {
     }
 
     private void metricMarkCacheHit(final RequestMetadata requestMetadata) {
+        cacheHitsMetric.mark();
         if (requestMetadata == null) {
             return;
         }
-        cacheHitsMetric.mark();
         final Meter guidCacheHitsMetric = metrics.meter(String.format("%s.%s", CACHE_HITS_METRIC, requestMetadata.getGuid()));
         guidCacheHitsMetric.mark();
     }
