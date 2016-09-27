@@ -3,6 +3,7 @@ console.log("Subreddit finder running");
 let init = function() {
   var toggle = function() {
     showingAll = !showingAll;
+    chrome.storage.sync.set({showingAll: showingAll}, () => {});
     pageToggle.textContent = showingAll ? "Hide Post Lists" : "Show Post Lists";
 
     let tables = document.querySelectorAll(".greentable");
